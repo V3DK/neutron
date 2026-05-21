@@ -276,7 +276,6 @@ def stage_pre_event_level(run_dir: str, n_events: int, seed: int, n_cores: int) 
     mtot_path   = _path(run_dir, "M_tot_draws.npy")
 
     print(f"\n[pre:event_level] Running {n_events} Fisher-matrix events ...")
-    random.seed(123)
 
     injections_data, M_tot_draws = _make_injection_draws(n_events, seed)
 
@@ -713,7 +712,7 @@ def stage_post_ppd(run_dir: str, result, n_ppd_samples: int = 500, n_lam_points:
     plot_path = _path(run_dir, "ppd_post.png")
     print(f"\n[post:ppd] Drawing {n_ppd_samples} posterior samples ...")
 
-    M_grid = np.linspace(MMIN, MMAX, 100)
+    M_grid = np.linspace(MMIN, MMAX, 1000)
 
     eos_true = lalsim.SimNeutronStarEOSByName(EOS)
     fam_true = lalsim.CreateSimNeutronStarFamily(eos_true)
@@ -735,11 +734,50 @@ def stage_post_ppd(run_dir: str, result, n_ppd_samples: int = 500, n_lam_points:
     fp_lo     = np.percentile(fp_ppd,  5, axis=0)
     fp_hi     = np.percentile(fp_ppd, 95, axis=0)
 
+    # PT stuff
+    lam_comp = 531.14
+    f_peak_DD2F = 3.098 # kHz
+
+    delta_n_pt = np.array([0.106, 0.094, 0.082, 0.108, 0.121, 0.030])
+    f_peaks_pt = np.array([3.54, 3.58, 3.36, 3.59, 3.67, 3.33])
+
+    delta_f_peak_pt = f_peaks_pt - f_peak_DD2F
+
+    # --- Evaluate PPD at lam_comp ---
+    fp_ppd_at_lam_comp = np.array([
+        10.0 ** post["alpha"].iloc[i] * lam_comp ** 2
+        - 10.0 ** post["beta"].iloc[i]  * lam_comp
+        + post["gamma"].iloc[i]
+        for i in idx
+    ])  # (N_PPD,)
+
+    fp_hi_at_lam_comp = np.percentile(fp_ppd_at_lam_comp, 95)
+
+    # --- MPA1 baseline at lam_comp ---
+    # lam_comp corresponds to a specific total binary mass; find it
+    M_at_lam_comp = M_grid[np.argmin(np.abs(lam_true - lam_comp))]
+    fp_mpa1_at_lam_comp = pm.fpeak_ts(np.array([M_at_lam_comp]))[0]
+
+    # --- Threshold and delta_n_min ---
+    delta_f_threshold = fp_hi_at_lam_comp - fp_mpa1_at_lam_comp
+
+    # Linear fit through origin: y = a_linear * x
+    x = delta_n_pt
+    y = delta_f_peak_pt
+
+    a_linear = (x @ y) / (x @ x)  # OLS through origin
+
+    # --- Threshold and delta_n_min ---
+    delta_n_min = delta_f_threshold / a_linear
+
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.fill_between(lam_plot, fp_lo, fp_hi, alpha=0.3, color="steelblue", label="PPD 90% CI")
     ax.plot(lam_plot, fp_median, color="steelblue", lw=2, label="PPD median")
     ax.plot(lam_true, fp_true,   color="crimson",   lw=2, ls="--",
             label=f"True ({EOS} / Soultanis)")
+    ax.scatter(lam_comp, fp_hi_at_lam_comp, color="darkorange", zorder=5,
+           label=rf"Min detectable $\Delta n = {delta_n_min:.3f}\ \mathrm{{fm}}^{{-3}}$")
+    
     ax.set_xlabel(r"$\tilde{\Lambda}$", fontsize=13)
     ax.set_ylabel(r"$f_{\rm peak}$ [kHz]", fontsize=13)
     ax.legend(fontsize=11)

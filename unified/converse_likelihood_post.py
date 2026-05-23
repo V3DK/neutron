@@ -95,7 +95,7 @@ class EMRelationLikelihood(Likelihood):
         """
         alpha = parameters["alpha"]
         beta  = parameters["beta"]
-        gamma = parameters["gamma"]
+        # gamma = parameters["gamma"]
         M     = self._M
 
         # Draw log_lam samples: shape (N, M)
@@ -110,9 +110,13 @@ class EMRelationLikelihood(Likelihood):
         lam_t_samples = np.exp(log_lam_samples)
 
         # Map to f_peak via empirical relation: shape (N, M)
-        a          = 10.0 ** alpha
-        b          = 10.0 ** beta
-        fp_samples = a * lam_t_samples ** 2 - b * lam_t_samples + gamma
+        # a          = 10.0 ** alpha
+        # b          = 10.0 ** beta
+        # fp_samples = a * lam_t_samples ** 2 - b * lam_t_samples + gamma
+
+        # linear modeL: y = -10^\alpha * x + beta
+        fp_samples = - (10 ** alpha) * lam_t_samples + beta
+
 
         # Inspiral log-likelihood factor: log N(log_lam^(k) | mu_i, sigma_i^2)
         # shape (N, M)
@@ -131,8 +135,8 @@ class EMRelationLikelihood(Likelihood):
         )
 
         # Combined log weight: shape (N, M)
-        log_w = log_w_pm
-        # log_w = log_w_insp + log_w_pm
+        # log_w = log_w_pm
+        log_w = log_w_insp + log_w_pm
 
         # Per-event MC log-likelihood: logsumexp over M samples, subtract log M
         # shape (N,)

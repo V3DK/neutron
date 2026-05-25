@@ -120,7 +120,12 @@ from converse_likelihood_post import EMRelationLikelihood
 from KDEPrior import KDEJointDist
 import pm_waveform_np as pm
 
-import matplotlib
+import matplotlib 
+matplotlib.rcParams.update({
+    "text.usetex":        True,
+    "font.family":        "serif",
+    "font.serif":         ["Computer Modern Roman"],
+})
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -765,18 +770,19 @@ def stage_multi_ppd(
         widths = [r[1] for r in width_records]
         colors = [r[2] for r in width_records]
 
-        fig_w, ax_w = plt.subplots(figsize=(7, 5))
-        ax_w.plot(ns, widths, color="dimgray", lw=1.5, zorder=1)
+        fig_w, ax_w = plt.subplots(figsize=(8, 6))
+        ax_w.plot(ns, widths, color="dimgray", lw=3, zorder=1)
         for n_val, w_val, c in zip(ns, widths, colors):
-            ax_w.scatter(n_val, w_val, color=c, s=60, zorder=2)
+            ax_w.scatter(n_val, w_val, color=c, s=129, zorder=2)
 
-        ax_w.set_xlabel(r"$N$ (number of events)", fontsize=13)
+        ax_w.axhline(y=558, color="dimgray", lw=3.0, ls="--", zorder=1, label = "GW170817")
+        ax_w.set_xlabel(r"$N$", fontsize=26)
         ax_w.set_ylabel(
-            r"$\Delta\Lambda_{90}\ (m = 1.35\,M_\odot)$", fontsize=13)
-        # ax_w.set_title(
-        #     r"Inspiral EOS constraint: 90% CL width vs $N$", fontsize=13)
+            r"$\Delta\Lambda_{90}$", fontsize=26)
+        ax_w.tick_params(axis="both", labelsize=22)
         ax_w.set_xlim(left=0)
         ax_w.set_ylim(bottom=0)
+        ax_w.legend(fontsize = 26, loc = "upper right")
         fig_w.tight_layout()
         fig_w.savefig(width_path, dpi=150)
         plt.close(fig_w)
@@ -1091,7 +1097,10 @@ def _load_post_hierarchical(run_dir: str):
 # ===========================================================================
 # Model indices follow Bauswein+2018 Table 1; model 2 is excluded because it
 # uses a different hadronic baseline.
-_PT_MODEL_NUMBERS  = [1, 3, 4, 5, 6, 7]
+# _PT_MODEL_NUMBERS  = [1, 3, 4, 5, 6, 7]
+_PT_MODEL_NUMBERS_PLOT  = [4, 7]
+_PT_DELTA_N_PLOT        = np.array([0.082, 0.030])
+
 _PT_DELTA_N        = np.array([0.106, 0.094, 0.082, 0.108, 0.121, 0.030])  # fm⁻³
 _PT_F_PEAKS        = np.array([3.54,  3.58,  3.36,  3.59,  3.67,  3.33])   # kHz
 _PT_F_PEAK_DD2F    = 3.098   # kHz  – hadronic DD2F baseline at lam_comp
@@ -1318,8 +1327,8 @@ def stage_multi_post_ppd(
 
     for i, (run_dir, label) in enumerate(zip(run_dirs, labels)):
         json_path      = _path(run_dir, "outdir_post", "unif_hierarchical_result.json")
-        mtot_post_path = _path(run_dir, "M_tot_draws_post.npy")
-        # mtot_post_path = _path(run_dir, "M_tot_draws.npy")
+        # mtot_post_path = _path(run_dir, "M_tot_draws_post.npy")
+        mtot_post_path = _path(run_dir, "M_tot_draws.npy")
 
         for fpath, stage in [
             (json_path,      "post:hierarchical"),
@@ -1378,12 +1387,12 @@ def stage_multi_post_ppd(
         delta_ns  = [r[1] for r in delta_records]
         colors    = [r[2] for r in delta_records]
 
-        fig_d, ax_d = plt.subplots(figsize=(8, 5))
+        fig_d, ax_d = plt.subplots(figsize=(10, 6))
 
         # ── data curve ───────────────────────────────────────────────────────
-        ax_d.plot(ns, delta_ns, color="dimgray", lw=1.5, zorder=1)
+        ax_d.plot(ns, delta_ns, color="dimgray", lw=3.0, zorder=1)
         for n_val, dn_val, c in zip(ns, delta_ns, colors):
-            ax_d.scatter(n_val, dn_val, color=c, s=60, zorder=2)
+            ax_d.scatter(n_val, dn_val, color=c, s=120, zorder=2)
 
         # ── DD2F-SF horizontal reference lines ────────────────────────────────
         x_max = max(ns) if ns else 1
@@ -1391,28 +1400,35 @@ def stage_multi_post_ppd(
 
         line_styles = ["--", "-.", ":", "--", "-.", ":"]
         for model_num, dn_ref, ls in zip(
-            _PT_MODEL_NUMBERS, _PT_DELTA_N_REFS, line_styles
+            _PT_MODEL_NUMBERS_PLOT, _PT_DELTA_N_PLOT, line_styles
         ):
             ax_d.axhline(
-                y=dn_ref, color="dimgray", lw=1.0, ls=ls, alpha=0.7, zorder=0,
+                y=dn_ref, color="dimgray", lw=3.0, ls=ls, alpha=0.7, zorder=0,
+                label=f"DD2F-SF {model_num}",
             )
-            ax_d.annotate(
-                f"DD2F-SF {model_num}",
-                xy=(1.0, dn_ref),
-                xycoords=("axes fraction", "data"),
-                xytext=(4, 0),
-                textcoords="offset points",
-                va="center", ha="left",
-                fontsize=8, color="dimgray",
-            )
+            # ax_d.axhline(
+            #     y=dn_ref, color="dimgray", lw=3.0, ls=ls, alpha=0.7, zorder=0,
+            # )
+            # ax_d.annotate(
+            #     f"DD2F-SF {model_num}",
+            #     xy=(1.0, dn_ref),
+            #     xycoords=("axes fraction", "data"),
+            #     xytext=(4, 0),
+            #     textcoords="offset points",
+            #     va="center", ha="left",
+            #     fontsize=20, color="dimgray",
+            # )
 
-        ax_d.set_xlabel(r"$N$ (number of events)", fontsize=13)
-        ax_d.set_ylabel(r"$\Delta n_{\rm min}\ [\mathrm{fm}^{-3}]$", fontsize=13)
+        ax_d.set_xlabel(r"$N$", fontsize=25)
+        ax_d.set_ylabel(r"$\Delta n_{\rm min}\ [\mathrm{fm}^{-3}]$", fontsize=25)
+        ax_d.tick_params(axis="both", labelsize=25)
         ax_d.set_ylim(bottom=0)
-        ax_d.set_title(
-            r"Post-merger PT sensitivity: min detectable $\Delta n$ vs $N$",
-            fontsize=13,
-        )
+        # ax_d.set_title(
+        #     r"Post-merger PT sensitivity: min detectable $\Delta n$ vs $N$",
+        #     fontsize=13,
+        # )
+        ax_d.legend(fontsize=20, loc="upper right")
+
         fig_d.tight_layout()
         fig_d.subplots_adjust(right=0.82)
         fig_d.savefig(delta_path, dpi=150)
